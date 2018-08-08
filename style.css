@@ -1,0 +1,52 @@
+#canvas-container {
+    width: 1280px;
+    height: 720px;
+    text-align: center;
+    border: 1px solid black;
+}
+
+#status {
+    font-family: 'Lato', sans-serif;
+    color: #555;
+}
+
+#fullscreen {
+    color: whitesmoke;
+    font-family: 'Lato', sans-serif;
+    padding: 5px;
+    border-color: #555;
+    border-style: dashed;
+    border-width: 1px;
+    text-align: center;
+    width: fit-content;
+    font-size: 18px;
+}
+
+#fullscreen svg {
+    fill: currentColor;
+    display: inline;
+    margin: auto;
+}
+
+body {
+    width: 1280px;
+    margin: auto;
+    background: #111;
+    font-family: 'Lato', sans-serif;
+}
+
+canvas {
+    display: block;
+    background: #000;
+    image-rendering: -moz-crisp-edges; /* Firefox */
+    image-rendering: -webkit-crisp-edges; /* Webkit (Safari) */
+    image-rendering: pixelated; /* Chrome */
+    transform: scale(2);
+    transform-origin: top left;
+}
+
+.status {
+    background: #111;
+    align-self: center;
+    width: 1280px;
+}
