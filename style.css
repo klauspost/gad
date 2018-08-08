@@ -18,7 +18,6 @@
     border-style: dashed;
     border-width: 1px;
     text-align: center;
-    width: fit-content;
     font-size: 18px;
 }
 
@@ -36,13 +35,13 @@ body {
 }
 
 canvas {
-    display: block;
     background: #000;
     image-rendering: -moz-crisp-edges; /* Firefox */
     image-rendering: -webkit-crisp-edges; /* Webkit (Safari) */
     image-rendering: pixelated; /* Chrome */
     transform: scale(2);
-    transform-origin: top left;
+    transform-origin: top center;
+    display:inline;
 }
 
 .status {

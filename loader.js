@@ -15,6 +15,9 @@ script.onload = function () {
         mod = result.module;
         inst = result.instance;
         run();
+    }).catch(reason => {
+        var status = document.querySelector('#status');
+        status.innerHTML = reason;
     });
 
     async function run() {
