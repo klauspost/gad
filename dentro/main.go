@@ -27,8 +27,8 @@ const (
 
 func main() {
 	fx := newFx("data/scene.obj", "data/flower.png", "data/light.png")
-	gfx.Run(func() { gfx.RunTimedMusic(fx, "music/music.mp3") })
-	//gfx.RunWriteToDisk(fx, 1, "./saved/frame-%05d.png")
+	//gfx.Run(func() { gfx.RunTimedMusic(fx, "music/music.mp3") })
+	gfx.RunWriteToDisk(fx, 11, "./saved/frame-%05d.png")
 }
 
 type coord struct{ x, y, z float32 }
@@ -41,7 +41,7 @@ func (c *coord) scale(f float32) {
 
 var texts = [][2]string{
 	{
-		`--- >> Prepare for Go After Dark  << ---`,
+		`--- >> Welcome to  Go After Dark  << ---`,
 		`.oOoOoOoOoOo. .oO0Oo.  .oO0OoO0OouoO0Oo.`,
 	},
 	{
@@ -57,8 +57,12 @@ var texts = [][2]string{
 		`and code awesome looking effects.       `,
 	},
 	{
-		`Check out the links below and follow +  `,
-		`subscribe on Twitter and Youtube.       `,
+		`Check out the links below to watch      `,
+		`the first episode.                      `,
+	},
+	{
+		`I have material ready for at least 10   `,
+		`episodes, if there is interest for this.`,
 	},
 	{
 		`>> Credits <<                           `,
@@ -74,7 +78,11 @@ var texts = [][2]string{
 	},
 	{
 		`Pure software rendering in Go, compiled `,
-		`to Web Assembly by Go 1.11 Beta.        `,
+		`to Web Assembly by Go 1.11 (beta).      `,
+	},
+	{
+		`There is links to all source code to    `,
+		`build and run this demo.                `,
 	},
 }
 
@@ -460,4 +468,29 @@ func (f fp8x24) String() string {
 }
 func (f fp16x16) String() string {
 	return fmt.Sprintf("(%d,0x%x)", uint32(f)>>16, uint16(f))
+}
+
+func init() {
+	var palette [256]uint32
+	rC, gC, bC := 180, 180, 255
+	flip := 192
+	flipScale := int(256.0 * (256.0 / float64(flip)))
+	flipScale2 := int(256.0 * (256.0 / float64(255-flip)))
+	for i := range palette[:] {
+		var r, g, b int
+		if i < flip {
+			r = (i*rC*flipScale + 128) >> 16
+			g = (i*gC*flipScale + 128) >> 16
+			b = (i*bC*flipScale + 128) >> 16
+		} else {
+			r = rC
+			g = gC
+			b = bC
+			r += ((i - flip) * (255 - rC) * flipScale2) >> 16
+			g += ((i - flip) * (255 - gC) * flipScale2) >> 16
+			b += ((i - flip) * (255 - bC) * flipScale2) >> 16
+		}
+		palette[i] = uint32(r) | (uint32(g) << 8) | (uint32(b) << 16)
+	}
+	gfx.InitGreyPalette(palette)
 }

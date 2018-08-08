@@ -28,6 +28,7 @@
 }
 
 body {
+    color: whitesmoke;
     width: 1280px;
     margin: auto;
     background: #111;
@@ -48,4 +49,41 @@ canvas {
     background: #111;
     align-self: center;
     width: 1280px;
+}
+
+a:link {
+    color: white;
+}
+
+/* visited link */
+a:visited {
+    color: white;
+}
+
+/* mouse over link */
+a:hover {
+    color: orange;
+}
+
+/* selected link */
+a:active {
+    color: grey;
+}
+
+table {
+   border-width: 1px;
+    border-style: dotted;
+    border-collapse: collapse;
+    border-color: #333;
+    width: 80%;
+    padding: 15px;
+}
+
+td {
+    text-align: left;
+    padding: 15px;
+}
+
+h1 {
+    color: orange;
 }
