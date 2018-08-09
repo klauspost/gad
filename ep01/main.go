@@ -10,7 +10,7 @@ import (
 	_ "image/png"
 	"math"
 
-	_ "./data" // Load data.
+	_ "github.com/klauspost/gad/ep01/data" // Load data.
 	"github.com/klauspost/gfx"
 )
 
