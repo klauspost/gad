@@ -51,7 +51,7 @@ func newFx(file string) *fx {
 		panic("image " + file + " width is not power of two.")
 	}
 	if img.Rect.Dy() != 1<<fx.logH {
-		panic("image " + file + " width is not power of two.")
+		panic("image " + file + " height is not power of two.")
 	}
 
 	// Create our draw buffer
@@ -71,11 +71,11 @@ func (fx *fx) Render(t float64) image.Image {
 		DecimalPointLog = 16
 		DecimalMul      = 1 << DecimalPointLog
 	)
-	xMask := (1 << fx.logW) - 1
-	yMask := (1 << fx.logH) - 1
 	// tt is our reverse zoom as 16.16 fixed point
 	tt := int((math.Pow(t+0.05, 2) * 10) * DecimalMul)
 	logY := fx.logW
+	xMask := (1 << fx.logW) - 1
+	yMask := (1 << fx.logH) - 1
 
 	// Center of zoom (screen space)
 	centerX, centerY := renderWidth/2, renderHeight/2
