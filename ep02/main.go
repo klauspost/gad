@@ -72,8 +72,7 @@ func (fx *fx) Render(t float64) image.Image {
 		DecimalMul      = 1 << DecimalPointLog
 	)
 	// tt is our reverse zoom as 16.16 fixed point
-	tt := int((math.Pow(t+0.05, 2) * 10) * DecimalMul)
-	logY := fx.logW
+	tt := int((math.Pow(t, 2) * 12) * DecimalMul)
 	xMask := (1 << fx.logW) - 1
 	yMask := (1 << fx.logH) - 1
 
@@ -89,10 +88,12 @@ func (fx *fx) Render(t float64) image.Image {
 	y0 += texCenterY * DecimalMul
 
 	for y, line := range fx.lines {
+		srcY := ((y0 + y*tt) >> DecimalPointLog) & yMask
+		// Pre-shift, so srcY is offset for x=0 at our line.
+		srcY <<= fx.logW
 		for x := range line {
 			srcX := ((x0 + x*tt) >> DecimalPointLog) & xMask
-			srcY := ((y0 + y*tt) >> DecimalPointLog) & yMask
-			line[x] = fx.img.Pix[srcX+(srcY<<logY)]
+			line[x] = fx.img.Pix[srcX+srcY]
 		}
 	}
 	return fx.draw
