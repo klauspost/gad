@@ -3,7 +3,6 @@ package main
 import (
 	"image"
 	_ "image/png"
-	"math"
 	"math/bits"
 
 	_ "github.com/klauspost/gad/ep02/data" // Load data.
@@ -72,7 +71,8 @@ func (fx *fx) Render(t float64) image.Image {
 		DecimalMul      = 1 << DecimalPointLog
 	)
 	// tt is our reverse zoom as 16.16 fixed point
-	tt := int((math.Pow(t, 2) * 12) * DecimalMul)
+	tt := int(t * t * 12 * DecimalMul)
+
 	xMask := (1 << fx.logW) - 1
 	yMask := (1 << fx.logH) - 1
 
