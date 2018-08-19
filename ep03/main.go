@@ -68,6 +68,7 @@ func newRotoZoom(file string) *RotoZoomer {
 
 // Render the effect at time t.
 func (rz *RotoZoomer) Render(t float64) image.Image {
+	//return rz.RenderTexture(t)
 	const (
 		DecimalPointLog = 16
 		DecimalMul      = 1 << DecimalPointLog
@@ -107,5 +108,64 @@ func (rz *RotoZoomer) Render(t float64) image.Image {
 		v0 += vEveryY
 		u0 += uEveryY
 	}
+	return rz.draw
+}
+
+// Render the effect at time t.
+func (rz *RotoZoomer) RenderTexture(t float64) image.Image {
+	const (
+		DecimalPointLog = 16
+		DecimalMul      = 1 << DecimalPointLog
+	)
+	logY := rz.logW
+	uMask := 1<<rz.logW - 1
+	vMask := 1<<rz.logH - 1
+
+	// Angle of rotation and scale
+	ang := t * math.Pi * 2
+	scale := math.Abs(3 * math.Sin(ang*3))
+
+	uEveryX := int(math.Cos(ang) * scale * DecimalMul)
+	vEveryX := int(math.Sin(ang) * scale * DecimalMul)
+	uEveryY := int(-math.Sin(ang) * scale * DecimalMul)
+	vEveryY := int(math.Cos(ang) * scale * DecimalMul)
+
+	// Center of zoom (screen space)
+	centerX, centerY := renderWidth/2, renderHeight/2
+	u0 := -uEveryY*centerY - uEveryX*centerX
+	v0 := -vEveryY*centerY - vEveryX*centerX
+
+	// Center on texture (texture space)
+	texCenterU, texCenterV := 1<<(rz.logW-1), 1<<(rz.logH-1)
+	u0 += texCenterU * DecimalMul
+	v0 += texCenterV * DecimalMul
+	tex := make([]byte, len(rz.img.Pix))
+	copy(tex, rz.img.Pix)
+	for y, line := range rz.lines {
+		u := v0
+		v := u0
+		for x := range line {
+			if x != 0 && y != 0 && x != len(line)-1 && y != len(rz.lines)-1 {
+				v += uEveryX
+				u += vEveryX
+				continue
+			}
+			srcX := (v >> DecimalPointLog) & uMask
+			srcY := (u >> DecimalPointLog) & vMask
+			tex[srcX+(srcY<<logY)] = 26
+			v += uEveryX
+			u += vEveryX
+		}
+		v0 += vEveryY
+		u0 += uEveryY
+	}
+	for y, line := range rz.lines {
+		for x := range line {
+			srcX := x & uMask
+			srcY := y & vMask
+			line[x] = tex[srcX+(srcY<<logY)]
+		}
+	}
+
 	return rz.draw
 }
