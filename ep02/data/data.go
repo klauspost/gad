@@ -85,7 +85,7 @@ func dataBalletEgon256Png() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "data/ballet-egon-256.png", size: 11946, mode: os.FileMode(438), modTime: time.Unix(1533898518, 0)}
+	info := bindataFileInfo{name: "data/ballet-egon-256.png", size: 11946, mode: os.FileMode(438), modTime: time.Unix(1534785449, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -105,7 +105,7 @@ func dataClickPng() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "data/click.png", size: 628, mode: os.FileMode(438), modTime: time.Unix(1533898529, 0)}
+	info := bindataFileInfo{name: "data/click.png", size: 628, mode: os.FileMode(438), modTime: time.Unix(1534785449, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
