@@ -23,7 +23,6 @@ const (
 func main() {
 	fx := newRotoZoom("data/ashleymcnamara-pride_256.png")
 	gfx.Run(func() { gfx.RunTimed(fx) })
-	//gfx.RunWriteToDisk(fx, 1, "./saved/rotozoom-%05d.png")
 }
 
 type RotoZoomer struct {
@@ -68,19 +67,17 @@ func newRotoZoom(file string) *RotoZoomer {
 
 // Render the effect at time t.
 func (rz *RotoZoomer) Render(t float64) image.Image {
-	//return rz.RenderTexture(t)
+	//return rz.RenderTextureSpace(t)
 	const (
 		DecimalPointLog = 16
 		DecimalMul      = 1 << DecimalPointLog
 	)
-	logY := rz.logW
-	uMask := 1<<rz.logW - 1
-	vMask := 1<<rz.logH - 1
 
 	// Angle of rotation and scale
-	ang := t * math.Pi * 2
-	scale := math.Abs(3 * math.Sin(ang*3))
+	ang := (1.0 - t) * math.Pi * 2
+	scale := math.Abs(3 * math.Sin(ang*2))
 
+	// Calculate texture slopes.
 	uEveryX := int(math.Cos(ang) * scale * DecimalMul)
 	vEveryX := int(math.Sin(ang) * scale * DecimalMul)
 	uEveryY := int(-math.Sin(ang) * scale * DecimalMul)
@@ -95,15 +92,20 @@ func (rz *RotoZoomer) Render(t float64) image.Image {
 	texCenterU, texCenterV := 1<<(rz.logW-1), 1<<(rz.logH-1)
 	u0 += texCenterU * DecimalMul
 	v0 += texCenterV * DecimalMul
+
+	// Texture helpers
+	logY := rz.logW
+	uMask := 1<<rz.logW - 1
+	vMask := 1<<rz.logH - 1
 	for _, line := range rz.lines {
-		u := v0
-		v := u0
+		u := u0
+		v := v0
 		for x := range line {
-			srcX := (v >> DecimalPointLog) & uMask
-			srcY := (u >> DecimalPointLog) & vMask
+			srcX := (u >> DecimalPointLog) & uMask
+			srcY := (v >> DecimalPointLog) & vMask
 			line[x] = rz.img.Pix[srcX+(srcY<<logY)]
-			v += uEveryX
-			u += vEveryX
+			v += vEveryX
+			u += uEveryX
 		}
 		v0 += vEveryY
 		u0 += uEveryY
@@ -111,8 +113,8 @@ func (rz *RotoZoomer) Render(t float64) image.Image {
 	return rz.draw
 }
 
-// Render the effect at time t.
-func (rz *RotoZoomer) RenderTexture(t float64) image.Image {
+// RenderTextureSpace the effect in texture space at time t.
+func (rz *RotoZoomer) RenderTextureSpace(t float64) image.Image {
 	const (
 		DecimalPointLog = 16
 		DecimalMul      = 1 << DecimalPointLog
@@ -122,8 +124,8 @@ func (rz *RotoZoomer) RenderTexture(t float64) image.Image {
 	vMask := 1<<rz.logH - 1
 
 	// Angle of rotation and scale
-	ang := t * math.Pi * 2
-	scale := math.Abs(3 * math.Sin(ang*3))
+	ang := (1.0 - t) * math.Pi * 2
+	scale := math.Abs(3 * math.Sin(ang))
 
 	uEveryX := int(math.Cos(ang) * scale * DecimalMul)
 	vEveryX := int(math.Sin(ang) * scale * DecimalMul)
@@ -146,15 +148,15 @@ func (rz *RotoZoomer) RenderTexture(t float64) image.Image {
 		v := u0
 		for x := range line {
 			if x != 0 && y != 0 && x != len(line)-1 && y != len(rz.lines)-1 {
-				v += uEveryX
-				u += vEveryX
+				v += vEveryX
+				u += uEveryX
 				continue
 			}
-			srcX := (v >> DecimalPointLog) & uMask
-			srcY := (u >> DecimalPointLog) & vMask
+			srcX := (u >> DecimalPointLog) & uMask
+			srcY := (v >> DecimalPointLog) & vMask
 			tex[srcX+(srcY<<logY)] = 26
-			v += uEveryX
-			u += vEveryX
+			v += vEveryX
+			u += uEveryX
 		}
 		v0 += vEveryY
 		u0 += uEveryY
