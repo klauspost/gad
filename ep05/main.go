@@ -2,11 +2,13 @@ package main
 
 import (
 	"image"
+	"image/color"
 	_ "image/png"
 	"math"
 	"math/rand"
 	"time"
 
+	_ "github.com/klauspost/gad/ep05/data" // Load data.
 	"github.com/klauspost/gfx"
 )
 
@@ -21,6 +23,7 @@ const (
 //go:generate go-bindata -ignore=\.go\z -pkg=data -o ./data/data.go ./data/...
 
 func main() {
+	gfx.InitShadedPalette(192, color.RGBA{R: 251, G: 246, B: 158})
 	fx := newFx()
 	gfx.Run(func() { gfx.RunTimed(fx) })
 }
@@ -70,8 +73,8 @@ func newFx() *fx {
 func (fx *fx) Render(t float64) image.Image {
 	// Clear the screen or keep trails
 	for i := range fx.draw.Pix {
-		fx.draw.Pix[i] = 0
-		//fx.draw.Pix[i] = fx.draw.Pix[i] / 2
+		//fx.draw.Pix[i] = 0
+		fx.draw.Pix[i] = fx.draw.Pix[i] >> 1
 	}
 
 	angleSin, angleCos := float32(1), float32(0)
@@ -84,7 +87,7 @@ func (fx *fx) Render(t float64) image.Image {
 	// t2 goes from 0 -> 2 -> 0
 	t2 := float32(math.Sin(t*math.Pi)) * 2
 	// Offset z on all points over time, effectively moving the "camera" forward.
-	zoff := 2 - 10*t2
+	zoff := 3 - 5*t2
 
 	const (
 		// We calculate output contribution using the z depth.
@@ -119,9 +122,9 @@ func (fx *fx) Render(t float64) image.Image {
 		y += renderHeight / 2
 
 		if y := int(y); y > 0 && y < renderHeight {
-			l := fx.lines[y]
 			x := int(x)
 			if x > 0 && x < renderWidth {
+				l := fx.lines[y]
 				l[x] = clamp8(int(l[x]) + (zMaxValue - int(z*zFalloff)))
 			}
 		}

@@ -9,9 +9,9 @@ import (
 )
 
 func main() {
-	dir,_ := os.Getwd()
+	dir, _ := os.Getwd()
 	if !filepath.IsAbs(dir) {
-		dir,_ = filepath.Abs(dir)
+		dir, _ = filepath.Abs(dir)
 	}
 	dir = filepath.Clean(dir)
 	fmt.Println("Serving from:", dir, "on http://localhost:8080")
