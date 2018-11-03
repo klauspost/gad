@@ -25,6 +25,7 @@ const (
 func main() {
 	gfx.InitShadedPalette(192, color.RGBA{R: 251, G: 246, B: 158})
 	fx := newFx()
+	//gfx.RunWriteToDisk(fx, 1, "./saved/dots-%05d.png")
 	gfx.Run(func() { gfx.RunTimed(fx) })
 }
 
@@ -78,7 +79,7 @@ func (fx *fx) Render(t float64) image.Image {
 	}
 
 	angleSin, angleCos := float32(1), float32(0)
-	if false {
+	if true {
 		// Rotate 0 -> 180 degrees when t goes 0 -> 1
 		angleSin = float32(math.Sin(t * math.Pi))
 		angleCos = float32(math.Cos(t * math.Pi))
@@ -99,11 +100,6 @@ func (fx *fx) Render(t float64) image.Image {
 		maxZ = zMaxValue / zFalloff
 	)
 
-	if true {
-		// disables scaling
-		t2 = 1
-	}
-
 	// Draw all our dots
 	for _, d := range fx.dots {
 		z := d.z + zoff
@@ -121,9 +117,9 @@ func (fx *fx) Render(t float64) image.Image {
 		x += renderWidth / 2
 		y += renderHeight / 2
 
-		if y := int(y); y > 0 && y < renderHeight {
+		if y := int(y); y >= 0 && y < renderHeight {
 			x := int(x)
-			if x > 0 && x < renderWidth {
+			if x >= 0 && x < renderWidth {
 				l := fx.lines[y]
 				l[x] = clamp8(int(l[x]) + (zMaxValue - int(z*zFalloff)))
 			}
