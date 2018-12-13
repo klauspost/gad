@@ -117,7 +117,7 @@ func (fx *fx) Render(t float64) image.Image {
 	drawfunc := fx.drawSpriteNice
 	//drawfunc := fx.drawSpriteGo
 
-	if false {
+	if true {
 		for i := int32(0); i < 1024; i++ {
 			x := 10 + 20*(i%32-16)
 			y := 20 * (i/32 - 16)
@@ -330,26 +330,31 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 	m.mip = fx.mipmaps[mipLevel]
 	m.mipSize = uint32(1<<16) << uint(mipLevel)
 
+	// output pixels per texture pixels * 256
+	textureScale := float64(m.mip.Rect.Dx()) / (float64(r) / (128 * 256))
+
 	// Screen space start, rounded down
 	m.startX, m.startY = (x-r)>>8, (y-r)>>8
 	// Screen space, rounded up.
 	m.endX, m.endY = (x+r+255)>>8, (y+r+255)>>8
 
 	// Calculate rounded difference and convert to texture space.
-	m.u0, m.v0 = 256-uint32((x-r)-(m.startX<<8)), 256-uint32((y-r)-(m.startY<<8))
-	m.u0, m.v0 = uint32(float64(m.u0*256)), uint32(float64(m.v0*256))
+	m.u0, m.v0 = 255-uint32((x-r)-(m.startX<<8)), 255-uint32((y-r)-(m.startY<<8))
+	m.u0, m.v0 = uint32(float64(m.u0)*textureScale), uint32(float64(m.v0)*textureScale)
 
 	// Calculate rounded difference and convert to texture space.
-	m.u1, m.v1 = 256-uint32((m.endX<<8)-(x+r)), 256-uint32((m.endY<<8)-(y+r))
-	m.u1, m.v1 = m.mipSize-uint32(float64(m.u1*256)), m.mipSize-uint32(float64(m.v1*256))
+	m.u1, m.v1 = 255-uint32((m.endX<<8)-(x+r)), 255-uint32((m.endY<<8)-(y+r))
+	m.u1, m.v1 = m.mipSize-uint32(float64(m.u1)*textureScale), m.mipSize-uint32(float64(m.v1)*textureScale)
 
 	// Calculate step size per screen space pixel.
 	m.uStep = uint32(float64(m.u1-m.u0) / float64(m.endX-m.startX))
 	m.vStep = uint32(float64(m.v1-m.v0) / float64(m.endY-m.startY))
 
-	if true && (m.uStep == 0 || m.vStep == 0 || m.u0 >= m.u1 || m.v0 >= m.v1) {
+	if false && (m.uStep == 0 || m.vStep == 0 || m.u0 >= m.u1 || m.v0 >= m.v1) {
+		fmt.Printf("r:%d, m:%+v v0:%v, v1: %v scale:%v (%d, %d), x,y (%v, %v)\n",
+			r, m, 256-uint32((y-r)-(m.startY<<8)), 256-uint32((m.endY<<8)-(y+r)), textureScale/256, m.endX-m.startX, m.mip.Rect.Dx(),
+			float64(x)/256, float64(y)/256)
 		// Sanity check
-		fmt.Printf("r:%d, m:%+v   v0:%v, v1: %v\n", r, m, 256-uint32((y-r)-(m.startY<<8)), 256-uint32((m.endY<<8)-(y+r)))
 		m.mip = nil
 		return m
 	}
@@ -374,11 +379,13 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 		m.endY = renderHeight
 	}
 
-	// Final sanity to make sure we don't go over due to rounding.
-	//for ; m.u0+m.uStep*uint32(m.endX-m.startX) >= m.mipSize; m.endX-- {
-	//}
-	//for ; m.v0+m.vStep*uint32(m.endY-m.startY) >= m.mipSize; m.endY-- {
-	//}
+	if false {
+		// Final sanity to make sure we don't go over due to rounding.
+		for ; m.u0+m.uStep*uint32(m.endX-m.startX) >= m.mipSize; m.endX-- {
+		}
+		for ; m.v0+m.vStep*uint32(m.endY-m.startY) >= m.mipSize; m.endY-- {
+		}
+	}
 	return m
 }
 
