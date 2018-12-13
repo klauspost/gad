@@ -112,9 +112,9 @@ func (fx *fx) Render(t float64) image.Image {
 		halfWidth  = renderWidth * 0.5
 		halfHeight = renderHeight * 0.5
 	)
-	drawfunc := fx.drawSpriteFast
+	//drawfunc := fx.drawSpriteFast
 	//drawfunc := fx.drawSpriteMip
-	//drawfunc := fx.drawSpriteNice
+	drawfunc := fx.drawSpriteNice
 	//drawfunc := fx.drawSpriteGo
 
 	if false {
@@ -300,7 +300,7 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 		m.startX, m.endX = (x-r)>>8, (x-r)>>8+1
 		m.startY, m.endY = (y-r)>>8, (y-r)>>8+1
 		if m.startX >= renderWidth || m.startX < 0 || m.startY >= renderHeight || m.startY < 0 {
-			return mapping{}
+			return m
 		}
 		m.u1 = uint32(x-r) & 0xff
 		m.u0 = 256 - m.u1
@@ -320,16 +320,15 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 	}
 	mipLevel := mip
 	if mip < 0 {
-		mipLevel = int32(bits.Len32(uint32(r >> 7)))
+		mipLevel = int32(bits.Len32(uint32(r>>6))) - 1
 		if int(mipLevel) >= len(fx.mipmaps) {
 			mipLevel = int32(len(fx.mipmaps)) - 1
+		} else if mipLevel < 1 {
+			mipLevel = 1
 		}
 	}
 	m.mip = fx.mipmaps[mipLevel]
 	m.mipSize = uint32(1<<16) << uint(mipLevel)
-
-	// Texture pixels per output pixel
-	textureScale := float64(m.mip.Rect.Dx()) / (float64(r * 2 / 256))
 
 	// Screen space start, rounded down
 	m.startX, m.startY = (x-r)>>8, (y-r)>>8
@@ -338,17 +337,24 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 
 	// Calculate rounded difference and convert to texture space.
 	m.u0, m.v0 = 256-uint32((x-r)-(m.startX<<8)), 256-uint32((y-r)-(m.startY<<8))
-	m.u0, m.v0 = uint32(textureScale*float64(m.u0*256)), uint32(textureScale*float64(m.v0)*256)
+	m.u0, m.v0 = uint32(float64(m.u0*256)), uint32(float64(m.v0*256))
 
 	// Calculate rounded difference and convert to texture space.
 	m.u1, m.v1 = 256-uint32((m.endX<<8)-(x+r)), 256-uint32((m.endY<<8)-(y+r))
-	m.u1, m.v1 = m.mipSize-uint32(textureScale*float64(m.u1)*256), m.mipSize-uint32(textureScale*float64(m.v1)*256)
+	m.u1, m.v1 = m.mipSize-uint32(float64(m.u1*256)), m.mipSize-uint32(float64(m.v1*256))
 
 	// Calculate step size per screen space pixel.
-	m.uStep = uint32(float64(m.u1-m.u0) / float64(m.endX-m.startX-1))
-	m.vStep = uint32(float64(m.v1-m.v0) / float64(m.endY-m.startY-1))
+	m.uStep = uint32(float64(m.u1-m.u0) / float64(m.endX-m.startX))
+	m.vStep = uint32(float64(m.v1-m.v0) / float64(m.endY-m.startY))
 
-	// Clip
+	if true && (m.uStep == 0 || m.vStep == 0 || m.u0 >= m.u1 || m.v0 >= m.v1) {
+		// Sanity check
+		fmt.Printf("r:%d, m:%+v   v0:%v, v1: %v\n", r, m, 256-uint32((y-r)-(m.startY<<8)), 256-uint32((m.endY<<8)-(y+r)))
+		m.mip = nil
+		return m
+	}
+
+	// Clip left, top, right, bottom.
 	if m.startX < 0 {
 		m.u0 += m.uStep * uint32(-m.startX)
 		m.startX = 0
@@ -367,13 +373,12 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 		m.v1 -= uint32(m.endY-renderHeight) * m.vStep
 		m.endY = renderHeight
 	}
+
 	// Final sanity to make sure we don't go over due to rounding.
-	for m.u0+m.uStep*uint32(m.endX-m.startX) >= m.mipSize {
-		m.endX--
-	}
-	for m.v0+m.vStep*uint32(m.endY-m.startY) >= m.mipSize {
-		m.endY--
-	}
+	//for ; m.u0+m.uStep*uint32(m.endX-m.startX) >= m.mipSize; m.endX-- {
+	//}
+	//for ; m.v0+m.vStep*uint32(m.endY-m.startY) >= m.mipSize; m.endY-- {
+	//}
 	return m
 }
 
