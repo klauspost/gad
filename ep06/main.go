@@ -380,7 +380,8 @@ func (fx *fx) drawSpriteGo(x, y, r int32) {
 		return
 	}
 	draw.ApproxBiLinear.Scale(fx.draw, image.Rect(int(m.startX), int(m.startY), int(m.endX), int(m.endY)),
-		image.NewUniform(color.White), image.Rect(int(m.u0>>16), int(m.v0>>16), int(m.u1>>16), int(m.v1>>16)), draw.Over, &draw.Options{
+		image.NewUniform(color.White), image.Rect(int(m.u0>>16), int(m.v0>>16), int(m.u1>>16), int(m.v1>>16)),
+		draw.Over, &draw.Options{
 			SrcMask: grayToShallowAlpha(m.mip),
 		})
 }
@@ -412,10 +413,12 @@ type mapping struct {
 // at the specified mip level.
 func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 	var m mapping
+
 	// Quick discard
 	if x+r < 0 || x-r > (renderWidth*256) || y+r < 0 || y-r > (renderHeight*256) {
 		return m
 	}
+
 	// For very small radius we simply draw a point in a 2x2 square.
 	if r <= 128 {
 		m.startX, m.endX = (x-r)>>8, (x-r)>>8+1
@@ -439,6 +442,7 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 		fx.drawPoint(&m)
 		return m
 	}
+
 	mipLevel := mip
 	if mip < 0 {
 		mipLevel = int32(bits.Len32(uint32(r>>6))) - 1
@@ -473,7 +477,8 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 
 	if false && (m.uStep == 0 || m.vStep == 0 || m.u0 >= m.u1 || m.v0 >= m.v1) {
 		fmt.Printf("r:%d, m:%+v v0:%v, v1: %v scale:%v (%d, %d), x,y (%v, %v)\n",
-			r, m, 256-uint32((y-r)-(m.startY<<8)), 256-uint32((m.endY<<8)-(y+r)), textureScale/256, m.endX-m.startX, m.mip.Rect.Dx(),
+			r, m, 256-uint32((y-r)-(m.startY<<8)), 256-uint32((m.endY<<8)-(y+r)),
+			textureScale/256, m.endX-m.startX, m.mip.Rect.Dx(),
 			float64(x)/256, float64(y)/256)
 		// Sanity check
 		m.mip = nil
