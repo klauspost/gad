@@ -172,6 +172,22 @@ func newFx(file string) *fx {
 }
 
 // Render the effect at time t.
+func (fx *fx) Render(t float64) image.Image {
+	drawFn := fx.drawSpriteFast
+	//drawFn := fx.drawSpriteMip
+	//drawFn := fx.drawSpriteNice
+	//drawFn := fx.drawSpriteGo
+
+	//return fx.RenderParticles(t, drawFn)
+
+	for i := range fx.draw.Pix {
+		fx.draw.Pix[i] = 0
+	}
+	// return fx.Render2D(t, drawFn)
+	return fx.RenderTest(t, drawFn)
+}
+
+// Render the effect at time t.
 func (fx *fx) RenderParticles(t float64, drawFn func(x, y, r int32)) image.Image {
 	// Render fake sky/ground.
 	for y, line := range fx.lines {
@@ -194,22 +210,6 @@ func (fx *fx) RenderParticles(t float64, drawFn func(x, y, r int32)) image.Image
 	}
 
 	return fx.draw
-}
-
-// Render the effect at time t.
-func (fx *fx) Render(t float64) image.Image {
-	drawFn := fx.drawSpriteFast
-	//drawFn := fx.drawSpriteMip
-	//drawFn := fx.drawSpriteNice
-	//drawFn := fx.drawSpriteGo
-
-	return fx.RenderParticles(t, drawFn)
-
-	for i := range fx.draw.Pix {
-		fx.draw.Pix[i] = 0
-	}
-	return fx.Render2D(t, drawFn)
-	return fx.RenderTest(t, drawFn)
 }
 
 func (fx *fx) Render2D(t float64, drawFn func(x, y, r int32)) image.Image {
