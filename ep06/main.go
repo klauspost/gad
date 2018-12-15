@@ -61,15 +61,16 @@ type scene struct {
 }
 
 func (s *scene) generate() {
-	const parts = 1000
+	const parts = 2500
 	s.parts = make([]particle, parts)
 	rng := rand.New(rand.NewSource(0xc0cac01a))
+	const depth = 5
 	for i := range s.parts {
 		part := &s.parts[i]
 		part.basePos = vec3{
-			x: -(renderWidth * 3) + rng.Float32()*renderWidth*6,
-			y: -(renderHeight * 3) + rng.Float32()*renderHeight*6,
-			z: 0.1 + rng.Float32()*12,
+			x: -(renderWidth * depth) + rng.Float32()*renderWidth*depth*2,
+			y: -(renderHeight * depth) + rng.Float32()*renderHeight*depth*2,
+			z: 0.1 + rng.Float32()*4*depth,
 		}
 		part.speed = vec3{
 			x: 10 + rng.Float32()*50,
@@ -78,7 +79,7 @@ func (s *scene) generate() {
 		}
 	}
 	s.projected = make([]vec3, parts)
-	s.bounds.y = vec2{-renderHeight * 4, renderHeight * 4}
+	s.bounds.y = vec2{-renderHeight * depth * 1.5, renderHeight * depth * 1.5}
 }
 
 func (s scene) At(t float32) {
@@ -176,10 +177,10 @@ func (fx *fx) RenderParticles(t float64, drawFn func(x, y, r int32)) image.Image
 	for y, line := range fx.lines {
 		f := 255.0 - 192
 		if y < 64 {
-			f = math.Abs(255 - float64(y*3))
+			f = math.Abs(256 - float64(y*3))
 		}
-		if y > renderHeight-128 {
-			f = math.Abs(128 + float64(renderHeight-y)*2)
+		if y > renderHeight-96 {
+			f = math.Abs(128 - renderHeight + float64(y+20)*1.15)
 		}
 		v := uint8(math.Min(255, math.Max(0, f)))
 		for x := range line {
@@ -197,8 +198,8 @@ func (fx *fx) RenderParticles(t float64, drawFn func(x, y, r int32)) image.Image
 
 // Render the effect at time t.
 func (fx *fx) Render(t float64) image.Image {
-	//drawFn := fx.drawSpriteFast
-	drawFn := fx.drawSpriteMip
+	drawFn := fx.drawSpriteFast
+	//drawFn := fx.drawSpriteMip
 	//drawFn := fx.drawSpriteNice
 	//drawFn := fx.drawSpriteGo
 
@@ -371,6 +372,21 @@ func (fx *fx) drawSpriteNice(x, y, r int32) {
 	}
 }
 
+// drawSpriteGo will draw a particle centered at x,y with radius r.
+// Input is assumed to be 24.8
+func (fx *fx) drawSpriteGo(x, y, r int32) {
+	m := fx.calcMapping(x, y, r, -1)
+	if m.startX == m.endX || m.startY == m.endY || m.mip == nil {
+		return
+	}
+	draw.ApproxBiLinear.Scale(fx.draw, image.Rect(int(m.startX), int(m.startY), int(m.endX), int(m.endY)),
+		image.NewUniform(color.White), image.Rect(int(m.u0>>16), int(m.v0>>16), int(m.u1>>16), int(m.v1>>16)), draw.Over, &draw.Options{
+			SrcMask: grayToShallowAlpha(m.mip),
+		})
+}
+
+// mapping contains the information about the sprite needed
+// to draw it to the screen without bounds checks.
 type mapping struct {
 	// Start and end coordinates in screen space.
 	// This is where we will be drawing the pixels.
@@ -384,7 +400,7 @@ type mapping struct {
 	// Every pixel increment u and v by this when moving one pixel in screen space.
 	vStep, uStep uint32
 
-	// The size (width/height) of the chosen mip.
+	// The size (width/height) of the chosen mip in uv scale.
 	mipSize uint32
 
 	// The image to draw from.
@@ -516,20 +532,6 @@ func clamp8uint32(v uint32) uint8 {
 		return 255
 	}
 	return uint8(v)
-}
-
-// drawParticle will draw a particle centered at x,y with radius r.
-// The sprite
-// Input is assumed to be 24.8
-func (fx *fx) drawSpriteGo(x, y, r int32) {
-	m := fx.calcMapping(x, y, r, -1)
-	if m.startX == m.endX || m.startY == m.endY || m.mip == nil {
-		return
-	}
-	draw.ApproxBiLinear.Scale(fx.draw, image.Rect(int(m.startX), int(m.startY), int(m.endX), int(m.endY)),
-		image.NewUniform(color.White), image.Rect(int(m.u0>>16), int(m.v0>>16), int(m.u1>>16), int(m.v1>>16)), draw.Over, &draw.Options{
-			SrcMask: grayToShallowAlpha(m.mip),
-		})
 }
 
 // grayToShallowAlpha converts the grey image data to an alpha image.
