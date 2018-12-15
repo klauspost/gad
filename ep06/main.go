@@ -7,6 +7,7 @@ import (
 	_ "image/png"
 	"math"
 	"math/bits"
+	"math/rand"
 
 	_ "github.com/klauspost/gad/ep06/data" // Load data.
 	"github.com/klauspost/gfx"
@@ -26,12 +27,77 @@ const (
 func main() {
 	//rz := newFx("./data/pride_circle_grey.png")
 	//rz := newFx("./data/light.png")
-	gfx.InitShadedPalette(180, color.RGBA{R: 158, G: 240, B: 158})
+	gfx.InitShadedPalette(210, color.RGBA{R: 200, G: 200, B: 255})
 
-	fx := newFx("data/flower.png")
+	//fx := newFx("data/flower.png")
+	fx := newFx("data/snowflake2.png")
 	gfx.Run(func() { gfx.RunTimed(fx) })
 	//gfx.RunWriteToDisk(fx, 1, "./saved/particle-%05d.png")
 
+}
+
+type vec2 struct{ u, v float32 }
+type vec3 struct{ x, y, z float32 }
+
+// clipWrap will clip by wrapping, asteroid style.
+func (v vec2) clipWrap(n float32) float32 {
+	if n >= v.u && n <= v.v {
+		return n
+	}
+	return v.u + float32(math.Mod(float64(n-v.u), float64(v.v-v.u)))
+}
+
+type particle struct {
+	basePos vec3
+	speed   vec3
+}
+
+type scene struct {
+	parts     []particle
+	projected []vec3
+	bounds    struct {
+		y vec2
+	}
+}
+
+func (s *scene) generate() {
+	const parts = 1000
+	s.parts = make([]particle, parts)
+	rng := rand.New(rand.NewSource(0xc0cac01a))
+	for i := range s.parts {
+		part := &s.parts[i]
+		part.basePos = vec3{
+			x: -(renderWidth * 3) + rng.Float32()*renderWidth*6,
+			y: -(renderHeight * 3) + rng.Float32()*renderHeight*6,
+			z: 0.1 + rng.Float32()*12,
+		}
+		part.speed = vec3{
+			x: 10 + rng.Float32()*50,
+			y: 100 + rng.Float32()*500,
+			z: rng.Float32(),
+		}
+	}
+	s.projected = make([]vec3, parts)
+	s.bounds.y = vec2{-renderHeight * 4, renderHeight * 4}
+}
+
+func (s scene) At(t float32) {
+	dst := s.projected
+	if len(s.parts) != len(dst) {
+		panic(fmt.Sprintf("len(s.parts) != len(dst), %d != %d", len(s.parts), len(dst)))
+	}
+	for i, p := range s.parts {
+		var pos vec3
+		pos.x = p.basePos.x + p.speed.x*float32(math.Sin(float64(p.speed.x+p.speed.z*t*math.Pi*4)))
+		pos.y = s.bounds.y.clipWrap(p.basePos.y + (p.speed.y * t))
+		pos.z = max32(0.1, p.basePos.z+p.speed.z*0.5*float32(math.Sin(float64(p.speed.z*50+p.speed.z*t*math.Pi))))
+
+		d := &dst[i]
+		invZ := 1.0 / pos.z
+		d.x = pos.x*invZ + renderWidth/2
+		d.y = pos.y*invZ + renderHeight/2
+		d.z = invZ
+	}
 }
 
 type fx struct {
@@ -41,6 +107,7 @@ type fx struct {
 	draw       *image.Gray
 	logW, logH uint
 	lines      [][]byte
+	scene      scene
 }
 
 func newFx(file string) *fx {
@@ -99,61 +166,99 @@ func newFx(file string) *fx {
 		}
 		prev = img
 	}
+	fx.scene.generate()
 	return &fx
 }
 
 // Render the effect at time t.
+func (fx *fx) RenderParticles(t float64, drawFn func(x, y, r int32)) image.Image {
+	// Render fake sky/ground.
+	for y, line := range fx.lines {
+		f := 255.0 - 192
+		if y < 64 {
+			f = math.Abs(255 - float64(y*3))
+		}
+		if y > renderHeight-128 {
+			f = math.Abs(128 + float64(renderHeight-y)*2)
+		}
+		v := uint8(math.Min(255, math.Max(0, f)))
+		for x := range line {
+			line[x] = v
+		}
+	}
+
+	fx.scene.At(float32(t))
+	for _, p := range fx.scene.projected {
+		drawFn(int32(p.x*256), int32(p.y*256), int32(20*256*p.z))
+	}
+
+	return fx.draw
+}
+
+// Render the effect at time t.
 func (fx *fx) Render(t float64) image.Image {
+	//drawFn := fx.drawSpriteFast
+	drawFn := fx.drawSpriteMip
+	//drawFn := fx.drawSpriteNice
+	//drawFn := fx.drawSpriteGo
+
+	return fx.RenderParticles(t, drawFn)
+
 	for i := range fx.draw.Pix {
 		fx.draw.Pix[i] = 0
 	}
+	return fx.Render2D(t, drawFn)
+	return fx.RenderTest(t, drawFn)
+}
 
+func (fx *fx) Render2D(t float64, drawFn func(x, y, r int32)) image.Image {
 	const (
 		halfWidth  = renderWidth * 0.5
 		halfHeight = renderHeight * 0.5
 	)
-	//drawfunc := fx.drawSpriteFast
-	//drawfunc := fx.drawSpriteMip
-	drawfunc := fx.drawSpriteNice
-	//drawfunc := fx.drawSpriteGo
 
-	if true {
-		for i := int32(0); i < 1024; i++ {
-			x := 10 + 20*(i%32-16)
-			y := 20 * (i/32 - 16)
-			r := 7 * math.Abs(math.Sin(t+t*float64(x)/5)+math.Cos(t+t*float64(y)/3))
-			drawfunc(x*256+halfWidth*256, y*256+halfHeight*256, int32(256*r))
-		}
-		return fx.draw
+	for i := int32(0); i < 1024; i++ {
+		x := 10 + 20*(i%32-16)
+		y := 20 * (i/32 - 16)
+		r := 7 * math.Abs(math.Sin(t+t*float64(x)/5)+math.Cos(t+t*float64(y)/3))
+		drawFn(x*256+halfWidth*256, y*256+halfHeight*256, int32(256*r))
 	}
-	drawfunc(
+	return fx.draw
+}
+
+func (fx *fx) RenderTest(t float64, drawFn func(x, y, r int32)) image.Image {
+	const (
+		halfWidth  = renderWidth * 0.5
+		halfHeight = renderHeight * 0.5
+	)
+	drawFn(
 		int32(halfWidth*256+256*50*math.Sin(t*math.Pi*2*4)),
 		int32(halfHeight*256+256*50*math.Cos(t*math.Pi*2*4)),
 		//int32(256*50),
 		int32(256*130*math.Abs(math.Sin(t*math.Pi))),
 	)
-	drawfunc(
+	drawFn(
 		int32(150*256+256*t*100),
 		int32(55*256),
 		int32(256*50),
 	)
-	drawfunc(
+	drawFn(
 		int32(55*256),
 		int32(256*50+256*t*100),
 		int32(256*50),
 	)
 
-	drawfunc(
+	drawFn(
 		int32(halfWidth*1.5*256+255),
 		int32(halfHeight*256+255),
 		int32(256*150*(1-t)),
 	)
-	drawfunc(
+	drawFn(
 		int32(55*256),
 		int32(255*256),
 		int32(256*15*math.Abs(math.Cos(t*math.Pi*10))),
 	)
-	drawfunc(
+	drawFn(
 		int32(100*256+int32(t*200*256)),
 		int32(255*256),
 		int32(256*2*math.Abs(math.Cos(t*math.Pi*2))),
@@ -295,7 +400,7 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 	if x+r < 0 || x-r > (renderWidth*256) || y+r < 0 || y-r > (renderHeight*256) {
 		return m
 	}
-	// For very small radius we simply draw a point
+	// For very small radius we simply draw a point in a 2x2 square.
 	if r <= 128 {
 		m.startX, m.endX = (x-r)>>8, (x-r)>>8+1
 		m.startY, m.endY = (y-r)>>8, (y-r)>>8+1
@@ -435,6 +540,13 @@ func grayToShallowAlpha(src *image.Gray) *image.Alpha {
 		Stride: src.Stride,
 		Rect:   src.Rect,
 	}
+}
+
+func max32(a, b float32) float32 {
+	if a >= b {
+		return a
+	}
+	return b
 }
 
 type fp8x24 uint32
