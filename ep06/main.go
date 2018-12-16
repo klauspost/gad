@@ -27,13 +27,12 @@ const (
 func main() {
 	//rz := newFx("./data/pride_circle_grey.png")
 	//rz := newFx("./data/light.png")
-	gfx.InitShadedPalette(210, color.RGBA{R: 200, G: 200, B: 255})
+	gfx.InitShadedPalette(180, color.RGBA{R: 110, G: 110, B: 200})
 
 	//fx := newFx("data/flower.png")
 	fx := newFx("data/snowflake2.png")
 	gfx.Run(func() { gfx.RunTimed(fx) })
-	//gfx.RunWriteToDisk(fx, 1, "./saved/particle-%05d.png")
-
+	//gfx.RunWriteToDisk(fx, 1, "./saved/snow-%05d.png")
 }
 
 type vec2 struct{ u, v float32 }
@@ -173,12 +172,12 @@ func newFx(file string) *fx {
 
 // Render the effect at time t.
 func (fx *fx) Render(t float64) image.Image {
-	drawFn := fx.drawSpriteFast
+	//drawFn := fx.drawSpriteFast
 	//drawFn := fx.drawSpriteMip
-	//drawFn := fx.drawSpriteNice
+	drawFn := fx.drawSpriteNice
 	//drawFn := fx.drawSpriteGo
 
-	//return fx.RenderParticles(t, drawFn)
+	return fx.RenderParticles(t, drawFn)
 
 	for i := range fx.draw.Pix {
 		fx.draw.Pix[i] = 0
@@ -193,7 +192,7 @@ func (fx *fx) RenderParticles(t float64, drawFn func(x, y, r int32)) image.Image
 	for y, line := range fx.lines {
 		f := 255.0 - 192
 		if y < 64 {
-			f = math.Abs(256 - float64(y*3))
+			f = math.Abs(256 - float64(y*2) - 64)
 		}
 		if y > renderHeight-96 {
 			f = math.Abs(128 - renderHeight + float64(y+20)*1.15)
@@ -206,7 +205,7 @@ func (fx *fx) RenderParticles(t float64, drawFn func(x, y, r int32)) image.Image
 
 	fx.scene.At(float32(t))
 	for _, p := range fx.scene.projected {
-		drawFn(int32(p.x*256), int32(p.y*256), int32(20*256*p.z))
+		drawFn(int32(p.x*256), int32(p.y*256), int32(30*256*p.z)-300)
 	}
 
 	return fx.draw
