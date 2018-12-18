@@ -163,7 +163,7 @@ func newFx(scene, particle, light string) *fx {
 	fx.mipmaps = make([]*image.Gray, fx.logW+1)
 	fx.mipmaps[fx.logW] = fx.img
 	prev := fx.img
-	for i := fx.logW - 1; i > 0; i-- {
+	for i := int(fx.logW - 1); i >= 0; i-- {
 		img := image.NewGray(image.Rect(0, 0, prev.Rect.Dx()/2, prev.Rect.Dy()/2))
 		fx.mipmaps[i] = img
 		for y := 0; y < img.Rect.Dy(); y++ {
@@ -282,13 +282,13 @@ func (fx *fx) Render(t float64) image.Image {
 		if z <= 0 {
 			continue
 		}
-		invZ := 1.0 / z
+		invZ := 0.8 / z
 		x := 200 * d.x * invZ
 		y := 200 * d.y * invZ
 		x += halfWidth
 		y += halfHeight
 
-		zsize := 30 * 255 * 16 * invZ
+		zsize := 40 * 255 * 16 * invZ
 		fx.drawParticleMip(int32(x*256), int32(y*256), int32(zsize))
 	}
 	if fx.lastT > t {
@@ -383,6 +383,8 @@ type mapping struct {
 	mip     *image.Gray
 }
 
+// calcMapping will return a mapping for a sprite with radius r placed at (x,y)
+// at the specified mip level.
 func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 	var m mapping
 	// Quick discard
@@ -390,36 +392,42 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 		return m
 	}
 	// For very small radius we simply draw a point
-	if r <= 256 {
-		m.startX, m.endX = (x+r)>>8, (x+r)>>8+1
-		m.startY, m.endY = (y+r)>>8, (y+r)>>8+1
+	if r <= 128 {
+		m.startX, m.endX = (x-r)>>8, (x-r)>>8+1
+		m.startY, m.endY = (y-r)>>8, (y-r)>>8+1
 		if m.startX >= renderWidth || m.startX < 0 || m.startY >= renderHeight || m.startY < 0 {
-			return mapping{}
+			return m
 		}
 		m.u1 = uint32(x-r) & 0xff
 		m.u0 = 256 - m.u1
 		m.v1 = uint32(y-r) & 0xff
 		m.v0 = 256 - m.v1
-		m.u0 = (m.u0 * uint32(r)) >> 7
-		m.u1 = (m.u1 * uint32(r)) >> 7
-		m.v0 = (m.v0 * uint32(r)) >> 7
-		m.v1 = (m.v1 * uint32(r)) >> 7
+
+		// Radius times 1x1 pixel value.
+		rmip := (r * int32(fx.mipmaps[0].Pix[0])) >> 5
+		m.u0 = (m.u0 * uint32(rmip)) >> 8
+		m.u1 = (m.u1 * uint32(rmip)) >> 8
+		m.v0 = (m.v0 * uint32(rmip)) >> 8
+		m.v1 = (m.v1 * uint32(rmip)) >> 8
 		m.mipSize = 1
 		// leave mip nil
+		fx.drawPoint(&m)
 		return m
 	}
 	mipLevel := mip
 	if mip < 0 {
-		mipLevel = int32(bits.Len32(uint32(r >> 7)))
+		mipLevel = int32(bits.Len32(uint32(r>>6))) - 1
 		if int(mipLevel) >= len(fx.mipmaps) {
 			mipLevel = int32(len(fx.mipmaps)) - 1
+		} else if mipLevel < 1 {
+			mipLevel = 1
 		}
 	}
 	m.mip = fx.mipmaps[mipLevel]
 	m.mipSize = uint32(1<<16) << uint(mipLevel)
 
-	// Texture pixels per output pixel
-	textureScale := float64(m.mip.Rect.Dx()) / (float64(r * 2 / 256))
+	// output pixels per texture pixels * 256
+	textureScale := float64(m.mip.Rect.Dx()) / (float64(r) / (128 * 256))
 
 	// Screen space start, rounded down
 	m.startX, m.startY = (x-r)>>8, (y-r)>>8
@@ -427,18 +435,27 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 	m.endX, m.endY = (x+r+255)>>8, (y+r+255)>>8
 
 	// Calculate rounded difference and convert to texture space.
-	m.u0, m.v0 = 256-uint32((x-r)-(m.startX<<8)), 256-uint32((y-r)-(m.startY<<8))
-	m.u0, m.v0 = uint32(textureScale*float64(m.u0*256)), uint32(textureScale*float64(m.v0)*256)
+	m.u0, m.v0 = 255-uint32((x-r)-(m.startX<<8)), 255-uint32((y-r)-(m.startY<<8))
+	m.u0, m.v0 = uint32(float64(m.u0)*textureScale), uint32(float64(m.v0)*textureScale)
 
 	// Calculate rounded difference and convert to texture space.
-	m.u1, m.v1 = 256-uint32((m.endX<<8)-(x+r)), 256-uint32((m.endY<<8)-(y+r))
-	m.u1, m.v1 = m.mipSize-uint32(textureScale*float64(m.u1)*256), m.mipSize-uint32(textureScale*float64(m.v1)*256)
+	m.u1, m.v1 = 255-uint32((m.endX<<8)-(x+r)), 255-uint32((m.endY<<8)-(y+r))
+	m.u1, m.v1 = m.mipSize-uint32(float64(m.u1)*textureScale), m.mipSize-uint32(float64(m.v1)*textureScale)
 
 	// Calculate step size per screen space pixel.
-	m.uStep = uint32(float64(m.u1-m.u0) / float64(m.endX-m.startX-1))
-	m.vStep = uint32(float64(m.v1-m.v0) / float64(m.endY-m.startY-1))
+	m.uStep = uint32(float64(m.u1-m.u0) / float64(m.endX-m.startX))
+	m.vStep = uint32(float64(m.v1-m.v0) / float64(m.endY-m.startY))
 
-	// Clip
+	if false && (m.uStep == 0 || m.vStep == 0 || m.u0 >= m.u1 || m.v0 >= m.v1) {
+		fmt.Printf("r:%d, m:%+v v0:%v, v1: %v scale:%v (%d, %d), x,y (%v, %v)\n",
+			r, m, 256-uint32((y-r)-(m.startY<<8)), 256-uint32((m.endY<<8)-(y+r)), textureScale/256, m.endX-m.startX, m.mip.Rect.Dx(),
+			float64(x)/256, float64(y)/256)
+		// Sanity check
+		m.mip = nil
+		return m
+	}
+
+	// Clip left, top, right, bottom.
 	if m.startX < 0 {
 		m.u0 += m.uStep * uint32(-m.startX)
 		m.startX = 0
@@ -457,17 +474,15 @@ func (fx *fx) calcMapping(x, y, r, mip int32) mapping {
 		m.v1 -= uint32(m.endY-renderHeight) * m.vStep
 		m.endY = renderHeight
 	}
+
+	if false {
+		// Final sanity to make sure we don't go over due to rounding.
+		for ; m.u0+m.uStep*uint32(m.endX-m.startX) >= m.mipSize; m.endX-- {
+		}
+		for ; m.v0+m.vStep*uint32(m.endY-m.startY) >= m.mipSize; m.endY-- {
+		}
+	}
 	return m
-}
-
-type fp8x24 uint32
-type fp16x16 uint32
-
-func (f fp8x24) String() string {
-	return fmt.Sprintf("(%d,0x%x)", uint32(f)>>8, uint8(f))
-}
-func (f fp16x16) String() string {
-	return fmt.Sprintf("(%d,0x%x)", uint32(f)>>16, uint16(f))
 }
 
 func init() {
