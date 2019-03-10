@@ -5,6 +5,14 @@ import (
 	"image"
 )
 
+type Point2D struct {
+	X, Y float32
+}
+
+type Line struct {
+	P1, P2 Point2D
+}
+
 func (l Line) Draw(dst *image.Gray, col byte) {
 	w, h := dst.Rect.Dx(), dst.Rect.Dy()
 	if !l.clip(w, h) {
@@ -255,14 +263,6 @@ func absf(x float32) float32 {
 		return 0 // return correctly abs(-0)
 	}
 	return x
-}
-
-type Point2D struct {
-	X, Y float32
-}
-
-type Line struct {
-	P1, P2 Point2D
 }
 
 // line clipping converted from C++ on
