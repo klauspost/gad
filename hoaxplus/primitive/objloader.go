@@ -31,7 +31,7 @@ func LoadOBJ(b []byte) (verts P3Ds, edges [][2]int) {
 	for scanner.Scan() {
 		t := scanner.Text()
 		if strings.HasPrefix(t, "v ") {
-			var c P3D
+			var c Point3D
 			n, err := fmt.Sscanf(t, "v %f %f %f", &c.X, &c.Y, &c.Z)
 			if err != nil {
 				panic(err)

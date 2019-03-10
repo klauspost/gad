@@ -2,10 +2,10 @@ package primitive
 
 import "math"
 
-type P3D struct{ X, Y, Z float32 }
-type P3Ds []P3D
+type Point3D struct{ X, Y, Z float32 }
+type P3Ds []Point3D
 
-func (c *P3D) Scale(f float32) {
+func (c *Point3D) Scale(f float32) {
 	c.X *= f
 	c.Y *= f
 	c.Z *= f
@@ -52,7 +52,7 @@ func (p P3Ds) ProjectTo(dst []Point2D, w, h, zoff float32) {
 
 // rotateFn returns a function that rotates around (0,0,0).
 // Supply angles in radians.
-func rotateFn(xAn, yAn, zAn float64) func(c P3D) P3D {
+func rotateFn(xAn, yAn, zAn float64) func(c Point3D) Point3D {
 	var (
 		s1 = float32(math.Sin(zAn))
 		s2 = float32(math.Sin(xAn))
@@ -71,7 +71,7 @@ func rotateFn(xAn, yAn, zAn float64) func(c P3D) P3D {
 		seven = c2 * c3
 		eight = s1*s3 + c1*c3*s2
 	)
-	return func(c P3D) P3D {
+	return func(c Point3D) Point3D {
 		c.X, c.Y, c.Z = c.X*zero+c.Y*one+c.Z*two, c.X*three+c.Y*four+c.Z*five, c.X*six+c.Y*seven+c.Z*eight
 		return c
 	}

@@ -5,10 +5,6 @@ import (
 	"image"
 )
 
-type Point2D struct {
-	X, Y float32
-}
-
 type Line struct {
 	P1, P2 Point2D
 }
