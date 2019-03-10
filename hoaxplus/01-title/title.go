@@ -75,7 +75,7 @@ func (fx *title) Render(t float64) image.Image {
 	fw, fh := float32(img.Rect.Dx()), float32(img.Rect.Dy())
 
 	// Draw line across screen
-	primitive.Line{P2: primitive.P2D{X: fw, Y: fh}}.DrawAA(img, 255)
+	primitive.Line{P2: primitive.Point2D{X: fw, Y: fh}}.DrawAA(img, 255)
 
 	// Draw model
 	fx.verts.RotateTo(fx.vTransformed, math.Pi/2, -t*math.Pi*2, 0)

@@ -32,13 +32,13 @@ const BehindCamera = 10e21
 
 // rotateFn returns a function that rotates around (0,0,0).
 // dst must be same size or bigger than p.
-func (p P3Ds) ProjectTo(dst []P2D, w, h, zoff float32) {
+func (p P3Ds) ProjectTo(dst []Point2D, w, h, zoff float32) {
 	halfWidth := w * 0.5
 	halfHeight := h * 0.5
 	for i, v := range p {
 		z := v.Z + zoff
 		if z <= 0 {
-			dst[i] = P2D{X: BehindCamera, Y: BehindCamera}
+			dst[i] = Point2D{X: BehindCamera, Y: BehindCamera}
 			continue
 		}
 		invZ := 1 / z
@@ -46,7 +46,7 @@ func (p P3Ds) ProjectTo(dst []P2D, w, h, zoff float32) {
 		y := halfWidth * v.Y * invZ
 		x += halfWidth
 		y += halfHeight
-		dst[i] = P2D{X: x, Y: y}
+		dst[i] = Point2D{X: x, Y: y}
 	}
 }
 

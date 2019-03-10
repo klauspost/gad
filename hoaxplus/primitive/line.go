@@ -257,8 +257,12 @@ func absf(x float32) float32 {
 	return x
 }
 
+type Point2D struct {
+	X, Y float32
+}
+
 type Line struct {
-	P1, P2 P2D
+	P1, P2 Point2D
 }
 
 // line clipping converted from C++ on
@@ -281,7 +285,7 @@ func (l *Line) clip(w, h int) bool {
 	fw, fh := float32(w)-0.51, float32(h)-0.51
 
 	// Function to compute region code for a point(X, y)
-	var computeCode = func(p P2D) int {
+	var computeCode = func(p Point2D) int {
 		// initialized as being inside
 		code := INSIDE
 
