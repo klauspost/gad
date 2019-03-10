@@ -19,17 +19,24 @@ func (l Line) Draw(dst *image.Gray, col byte) {
 		return
 	}
 
+	// Find which direction is longer
 	yLonger := false
 	shortLen := l.P2.Y - l.P1.Y
 	longLen := l.P2.X - l.P1.X
+
+	// Swap if we have to
 	if absf(shortLen) > absf(longLen) {
 		shortLen, longLen = longLen, shortLen
 		yLonger = true
 	}
+
+	// Find how much we should increment on every pixel.
 	var decInc float32
 	if longLen != 0 {
 		decInc = shortLen / longLen
 	}
+
+	// Small rounding adjustment to avoid accumulated errors.
 	const sigma = 0.001
 
 	if yLonger {
