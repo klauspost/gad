@@ -4,15 +4,21 @@ import (
 	"image"
 	"time"
 
+	"github.com/klauspost/gad/hoaxplus/00-intro"
+	"github.com/klauspost/gad/hoaxplus/01-title"
+	_ "github.com/klauspost/gad/hoaxplus/data"
 	"github.com/klauspost/gfx"
-	"github.com/klauspost/hoaxplus/00-intro"
-	"github.com/klauspost/hoaxplus/01-title"
 )
 
 var (
 	renderWidth  = 624
 	renderHeight = 240
 )
+
+// Generates binary data.
+// To install go-bindata, do: go get -u github.com/jteeuwen/go-bindata/...
+//
+//go:generate go-bindata -ignore=\.go\z -pkg=data -o ../../data/data.go --prefix=../../data ../../data/...
 
 func main() {
 	// Create our draw buffer
